@@ -111,7 +111,11 @@ Mappings:
       ZoneId1: use1-az6
       ZoneId2: use1-az4
       DbInstanceType: db.t4g.micro
-
+    us-east-2:
+      ZoneId1: use2-az2
+      ZoneId2: use2-az3
+      DbInstanceType: db.t4g.micro
+      
 Conditions:
   CreateVpc: !Equals [!Ref VpcId, AUTO]
   CreatePrivateSubnet: !And [!Condition CreateVpc, !Equals [!Ref PrivateSubnetAId, AUTO]]
