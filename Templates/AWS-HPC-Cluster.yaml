@@ -191,7 +191,7 @@ Resources:
       Name: !Ref Cloud9SSMDocument
       OutputLocation: 
         S3Location:
-          OutputS3BucketName: !Ref Cloud9OutputBucket
+          OutputS3BucketName: !Ref HPCAssetsBucket
           OutputS3KeyPrefix: bootstrapoutput
       Targets:
         - Key: tag:SSMBootstrap
@@ -209,30 +209,70 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: "Name"
-          Value: !Sub '${AWS::StackName}-HPC-VPC'
+          Value: !Sub '${AWS::StackName}-vpc'
 
   PublicSubnetA:
     Type: AWS::EC2::Subnet
     Condition: CreateVpc
     Properties:
       VpcId: !Ref VPC
+      AvailabilityZone: !GetAtt AvailabiltyZone1.ZoneName
       CidrBlock: 10.0.10.0/24
       MapPublicIpOnLaunch: true
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-Public-SubnetA'
+        Value: !Sub '${AWS::StackName}-public-subnetA'
 
   PublicSubnetB:
     Type: AWS::EC2::Subnet
     Condition: CreateVpc
     Properties:
       VpcId: !Ref VPC
+      AvailabilityZone: !GetAtt AvailabiltyZone2.ZoneName
       CidrBlock: 10.0.20.0/24
       MapPublicIpOnLaunch: true
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-Public-SubnetB'
+        Value: !Sub '${AWS::StackName}-public-subnetB'
+  
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Condition: CreatePrivateSubnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !GetAtt AvailabiltyZone1.ZoneName
+      CidrBlock: 10.0.128.0/18
+      MapPublicIpOnLaunch: false
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-Private-subnetA'
+  
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Condition: CreatePrivateSubnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !GetAtt AvailabiltyZone2.ZoneName
+      CidrBlock: 10.0.192.0/18
+      MapPublicIpOnLaunch: false
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-Private-subnetB'
 
+  AvailabiltyZone1:
+    Type: Custom::AvailabiltyZone
+    DependsOn: LogGroupGetAZLambdaFunction
+    Properties:
+      ServiceToken: !GetAtt GetAZLambdaFunction.Arn
+      ZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", ZoneId1]
+
+  AvailabiltyZone2:
+    Type: Custom::AvailabiltyZone
+    DependsOn: LogGroupGetAZLambdaFunction
+    Properties:
+      ServiceToken: !GetAtt GetAZLambdaFunction.Arn
+      ZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", ZoneId2]
+  
   InternetGatewayA:
     Type: AWS::EC2::InternetGateway
     Condition: CreateVpc
@@ -251,7 +291,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-Public-Route-AB'
+        Value: !Sub '${AWS::StackName}-public-Route-AB'
   PublicRoute1:
     Type: AWS::EC2::Route
     Condition: CreateVpc
@@ -273,28 +313,6 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnetB
       RouteTableId: !Ref PublicRouteTable
-
-  PrivateSubnetA:
-    Type: AWS::EC2::Subnet
-    Condition: CreatePrivateSubnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.128.0/18
-      MapPublicIpOnLaunch: false
-      Tags:
-      - Key: Name
-        Value: !Sub '${AWS::StackName}-Private-SubnetA'
-  
-  PrivateSubnetB:
-    Type: AWS::EC2::Subnet
-    Condition: CreatePrivateSubnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.192.0/18
-      MapPublicIpOnLaunch: false
-      Tags:
-      - Key: Name
-        Value: !Sub '${AWS::StackName}-Private-SubnetB'
 
   NatGatewayAEIP:
     Type: AWS::EC2::EIP
@@ -334,23 +352,9 @@ Resources:
       RouteTableId: !Ref PrivateRouteTableA
       SubnetId: !Ref PrivateSubnetA
 
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: 'Allow https and http'
-      VpcId: !If [CreateVpc, !Ref VPC, !Ref VpcId]
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 443
-        ToPort: 443
-        CidrIp: 0.0.0.0/0
-      - IpProtocol: tcp
-        FromPort: 80
-        ToPort: 80
-        CidrIp: 0.0.0.0/0
-
   PCAdditionalSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpc
     Properties:
       GroupDescription: 'Allow 8443 and 80 from the ALB'
       VpcId: !If [CreateVpc, !Ref VPC, !Ref VpcId]
@@ -358,19 +362,19 @@ Resources:
       - IpProtocol: tcp
         FromPort: 8443
         ToPort: 8443
-        SourceSecurityGroupId: !Ref ALBSecurityGroup
+        CidrIp: !GetAtt VPC.CidrBlock
       - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
-        SourceSecurityGroupId: !Ref ALBSecurityGroup
+        CidrIp: !GetAtt VPC.CidrBlock
       - IpProtocol: tcp
         FromPort: 389
         ToPort: 389
-        SourceSecurityGroupId: !Ref ALBSecurityGroup
+        CidrIp: !GetAtt VPC.CidrBlock
       - IpProtocol: udp
         FromPort: 389
         ToPort: 389
-        SourceSecurityGroupId: !Ref ALBSecurityGroup
+        CidrIp: !GetAtt VPC.CidrBlock
 
   SlurmDBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -461,10 +465,10 @@ Resources:
             - echo LANG=en_US.utf-8 >> /etc/environment
             - echo LC_ALL=en_US.UTF-8 >> /etc/environment
             - cd /home/ec2-user/environment
-            - git clone --branch pchicarello "https://github.com/rumdawgg/hpc.git"
+            - git clone --branch pchicarello "https://github.com/rumdawgg/hpc.git" 1click-hpc
             - !Sub echo "export AWS_DEFAULT_REGION=${AWS::Region}" >> cluster_env
             - !Sub echo "export AWS_REGION_NAME=${AWS::Region}" >> cluster_env
-            - !Sub echo "export S3_BUCKET=${Cloud9OutputBucket}" >> cluster_env
+            - !Sub echo "export S3_BUCKET=${HPCAssetsBucket}" >> cluster_env
             - !Sub echo "export FSX_ID=${FSx}" >> cluster_env
             - !Sub
               - echo "export AD_ID=${ADId}" >> cluster_env
@@ -487,8 +491,8 @@ Resources:
             - !Sub
               - echo "export KEY_PAIR=\"${AWS::StackName}-${RANDOM}\"" >> cluster_env
               - RANDOM: !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId' ]]]]
-            - !Sub echo "export POST_INSTALL=\"s3://${Cloud9OutputBucket}/1click-hpc/scripts/post.install.sh\"" >> cluster_env
-            - !Sub sudo -H -u ec2-user bash -c "aws s3 cp --quiet --recursive 1click-hpc \"s3://${Cloud9OutputBucket}/1click-hpc\" --region ${AWS::Region}"
+            - !Sub echo "export POST_INSTALL=\"s3://${HPCAssetsBucket}/1click-hpc/scripts/post.install.sh\"" >> cluster_env
+            - !Sub sudo -H -u ec2-user bash -c "aws s3 cp --quiet --recursive 1click-hpc \"s3://${HPCAssetsBucket}/1click-hpc\" --region ${AWS::Region}"
             - chmod -x /home/ec2-user/environment/1click-hpc/scripts/Cloud9-Bootstrap.sh
             - sudo -H -u ec2-user bash -c "bash /home/ec2-user/environment/1click-hpc/scripts/Cloud9-Bootstrap.sh"
 
@@ -631,13 +635,12 @@ Resources:
       Timeout: 10
       MemorySize: 128
 
-  Cloud9OutputBucket:  # Creates Bucket to hold postinstall scripts - need to retain bucket after delete, because bucket needs to be empty to successfully delete
+  HPCAssetsBucket:  # Creates Bucket to hold postinstall scripts - need to retain bucket after delete, because bucket needs to be empty to successfully delete
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Join [ "-", ["hpc", !Ref "AWS::StackName", !Ref "AWS::AccountId"] ]
-
+      BucketName: !Join [ "-", [!Ref "AWS::StackName", "assets"] ]
 
   S3Endpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -671,9 +674,81 @@ Resources:
           - !If [CreateVpc, !Ref PublicSubnetA, !Ref PublicSubnetAId]
           - !If [CreateVpc, !Ref PublicSubnetB, !Ref PublicSubnetBId]
         VpcId: !If [CreateVpc, !Ref VPC, !Ref VpcId]
+  
+  LogGroupGetAZLambdaFunction:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetAZLambdaFunction}
+      RetentionInDays: 7
+
+  GetAZLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: GetAZLambdaFunction
+      Timeout: 60
+      Runtime: python3.7
+      Handler: index.handler
+      Role: !GetAtt GetAZLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import cfnresponse
+          from json import dumps
+          from boto3 import client
+          EC2 = client('ec2')
+          def handler(event, context):
+              if event['RequestType'] in ('Create', 'Update'):
+                  print(dumps(event, default=str))
+                  data = {}
+                  try:
+                      response = EC2.describe_availability_zones(
+                          Filters=[{'Name': 'zone-id', 'Values': [event['ResourceProperties']['ZoneId']]}]
+                      )
+                      print(dumps(response, default=str))
+                      data['ZoneName'] = response['AvailabilityZones'][0]['ZoneName']
+                  except Exception as error:
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {}, reason=error)
+                  finally:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, data)
+              else:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-GetAZLambdaFunction
+
+  GetAZLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      Description: GetAZLambdaFunction
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - !Sub 'lambda.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: GetAZLambdaFunction
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ec2
+                Effect: Allow
+                Action:
+                  - ec2:DescribeAvailabilityZones
+                Resource:
+                  - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-GetAZLambdaFunction
 
 Outputs:
-
+  
   Cloud9URL:
     Description: Cloud9 Environment
     Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloud9/ide/${Cloud9}'
