@@ -25,7 +25,7 @@ set -x
 set -e
 
 installPreReq() {
-    yum -y -q install docker golang-bin 
+    apt-get install -qy docker.io golang-1.14
     service docker start
     chkconfig docker on
     usermod -a -G docker $cfn_cluster_user

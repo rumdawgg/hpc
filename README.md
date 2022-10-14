@@ -12,8 +12,8 @@ You will be asked a few questions about services like VPC, FSx, etc; if you have
 | Region       | Launch                                                                                                                                                                                                                                                                                                             | 
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | US  | --- |
-| N. Virginia (us-east-1)   | [![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https%3A%2F%2Ffsp-public-configuration.s3.amazonaws.com%2Fcloudformation%2FAWS-HPC-Cluster.yaml&stackName=hpc-cluster) |
-| Ohio (us-east-2)   | [![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Ffsp-public-configuration.s3.amazonaws.com%2Fcloudformation%2FAWS-HPC-Cluster.yaml&stackName=hpc-cluster) |
+| N. Virginia (us-east-1)   | [![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https%3A%2F%2Ffsp-public-configuration.s3.amazonaws.com%2Fcloudformation%2FAWS-HPC-Cluster.yaml&stackName=NAME-hpc) |
+| Ohio (us-east-2)   | [![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?templateUrl=https%3A%2F%2Ffsp-public-configuration.s3.amazonaws.com%2Fcloudformation%2FAWS-HPC-Cluster.yaml&stackName=NAME-hpc) |
 
 
 

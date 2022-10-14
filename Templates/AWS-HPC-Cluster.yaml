@@ -10,9 +10,9 @@ Metadata:
         Parameters: 
           - AdminPassword
           - VpcId
-          - PublicSubnetAId
-          - PublicSubnetBId
+          - PublicSubnetId
           - PrivateSubnetAId
+          - PrivateSubnetBId
           - FSx
           - AD
           - ADDNS0
@@ -23,12 +23,12 @@ Metadata:
         default: 'Password:'
       VpcId: 
         default: 'VPC:'
-      PublicSubnetAId: 
+      PublicSubnetId: 
         default: 'Public Subnet 1:'
-      PublicSubnetBId: 
-        default: 'Public Subnet 2:'
       PrivateSubnetAId: 
-        default: 'Private Subnet:'
+        default: 'Private Subnet 1:'
+      PrivateSubnetBId: 
+        default: 'Private Subnet 2:'
       FSx: 
         default: 'FSx:'
       AD: 
@@ -42,7 +42,7 @@ Metadata:
         
 Parameters:
     AdminPassword:
-      Description: 'Please, enter the password for the user "ec2-user". Min 8 chars, three of: lowercase, uppercase, number and symbols'
+      Description: 'enter the password for the user "ec2-user". Min 8 chars, three of: lowercase, uppercase, number and symbols'
       Type: String
       MinLength: '8'
       MaxLength: '255'
@@ -50,37 +50,37 @@ Parameters:
       NoEcho: 'true'
 
     VpcId:
-      Description: 'Please, enter your VPC ID, or just leave "AUTO" if you want to re-use an existing one.'
+      Description: 'enter your VPC ID, or just leave "AUTO" if you want to create a new one.'
       Type: String
       AllowedPattern: ^(AUTO|vpc-[0-9a-z]+)$
       Default: AUTO
 
-    PublicSubnetAId: 
-      Description: 'Please, enter the ID of the Public Subnet you wish to use, or just leave "AUTO" if you want to re-use an existing one.'
-      Type: String
-      AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
-      Default : AUTO
-
-    PublicSubnetBId: 
-      Description: 'Please, enter another ID of the Public Subnet you wish to use, or just leave "AUTO" if you want to re-use an existing one.'
+    PublicSubnetId: 
+      Description: 'enter the ID of the Public Subnet you wish to use, or just leave "AUTO" if you want to create a new one.'
       Type: String
       AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
       Default : AUTO
     
     PrivateSubnetAId:
-      Description: 'Please, enter the ID of the Private Subnet you wish to use, or put NONE if you want to use only Public Subnets, or just leave "AUTO" if you want to re-use an existing one.'
+      Description: 'enter the ID of the Private Subnet you wish to use, or just leave "AUTO" if you want to create a new one.'
       Type: String
-      AllowedPattern: ^(AUTO|NONE|subnet-[0-9a-z]+)$
+      AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
       Default : AUTO
-      
+    
+    PrivateSubnetBId:
+      Description: 'enter the ID of the Private Subnet you wish to use, or just leave "AUTO" if you want to create a new one.'
+      Type: String
+      AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
+      Default : AUTO    
+    
     FSx: 
-      Description: 'Please, enter your FSx ID, or just leave "AUTO" if you want to re-use an existing one.'
+      Description: 'enter your FSx ID, or just leave "AUTO" if you want to create a new one.'
       Type: String
       AllowedPattern: ^(AUTO|fs-[0-9a-z]+)$
       Default : AUTO
 
     AD:
-      Description: 'Please, enter your Active Directory ID, or just leave "AUTO" if you want to create a new one.'
+      Description: 'enter your Active Directory ID, or just leave "AUTO" if you want to create a new one.'
       Type: String
       AllowedPattern: ^(AUTO|d-[0-9a-z]+)$
       Default : AUTO
@@ -115,7 +115,7 @@ Mappings:
       ZoneId1: use2-az2
       ZoneId2: use2-az3
       DbInstanceType: db.t4g.micro
-      
+
 Conditions:
   CreateVpc: !Equals [!Ref VpcId, AUTO]
   CreatePrivateSubnet: !And [!Condition CreateVpc, !Equals [!Ref PrivateSubnetAId, AUTO]]
@@ -215,7 +215,7 @@ Resources:
         - Key: "Name"
           Value: !Sub '${AWS::StackName}-vpc'
 
-  PublicSubnetA:
+  PublicSubnet:
     Type: AWS::EC2::Subnet
     Condition: CreateVpc
     Properties:
@@ -225,19 +225,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-public-subnetA'
-
-  PublicSubnetB:
-    Type: AWS::EC2::Subnet
-    Condition: CreateVpc
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !GetAtt AvailabiltyZone2.ZoneName
-      CidrBlock: 10.0.20.0/24
-      MapPublicIpOnLaunch: true
-      Tags:
-      - Key: Name
-        Value: !Sub '${AWS::StackName}-public-subnetB'
+        Value: !Sub '${AWS::StackName}-public-subnet'
   
   PrivateSubnetA:
     Type: AWS::EC2::Subnet
@@ -249,7 +237,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-Private-subnetA'
+        Value: !Sub '${AWS::StackName}-private-subnetA'
   
   PrivateSubnetB:
     Type: AWS::EC2::Subnet
@@ -261,7 +249,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-Private-subnetB'
+        Value: !Sub '${AWS::StackName}-private-subnetB'
 
   AvailabiltyZone1:
     Type: Custom::AvailabiltyZone
@@ -277,16 +265,16 @@ Resources:
       ServiceToken: !GetAtt GetAZLambdaFunction.Arn
       ZoneId: !FindInMap [RegionMap, !Ref "AWS::Region", ZoneId2]
   
-  InternetGatewayA:
+  InternetGateway:
     Type: AWS::EC2::InternetGateway
     Condition: CreateVpc
     
-  AttachGatewayA:
+  AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Condition: CreateVpc
     Properties:
       VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGatewayA
+      InternetGatewayId: !Ref InternetGateway
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -295,44 +283,38 @@ Resources:
       VpcId: !Ref VPC
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-public-Route-AB'
+        Value: !Sub '${AWS::StackName}-public-routetable'
+  
   PublicRoute1:
     Type: AWS::EC2::Route
     Condition: CreateVpc
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGatewayA
+      GatewayId: !Ref InternetGateway
   
-  PublicSubnetARouteTableAssociation:
+  PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Condition: CreateVpc
     Properties:
-      SubnetId: !Ref PublicSubnetA
+      SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
-  PublicSubnetBRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: CreateVpc
-    Properties:
-      SubnetId: !Ref PublicSubnetB
-      RouteTableId: !Ref PublicRouteTable
-
-  NatGatewayAEIP:
+  NatGatewayEIP:
     Type: AWS::EC2::EIP
     Condition: CreatePrivateSubnet
-    DependsOn: AttachGatewayA
+    DependsOn: AttachGateway
     Properties:
       Domain: vpc
 
-  NatGatewayA:
+  NatGateway:
     Type: AWS::EC2::NatGateway
     Condition: CreatePrivateSubnet
     Properties:
-      AllocationId: !GetAtt NatGatewayAEIP.AllocationId
-      SubnetId: !Ref PublicSubnetA
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
 
-  PrivateRouteTableA:
+  PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Condition: CreatePrivateSubnet
     Properties:
@@ -345,16 +327,23 @@ Resources:
     Type: AWS::EC2::Route
     Condition: CreatePrivateSubnet
     Properties:
-      RouteTableId: !Ref PrivateRouteTableA
+      RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayA
+      NatGatewayId: !Ref NatGateway
 
   PrivateSubnetARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Condition: CreatePrivateSubnet
     Properties:
-      RouteTableId: !Ref PrivateRouteTableA
+      RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnetA
+  
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreatePrivateSubnet
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetB
 
   PCAdditionalSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -410,12 +399,12 @@ Resources:
         - !Ref 'SlurmDBSecurityGroup'
 
   SlurmDBSubnetGroup: 
-      Type: 'AWS::RDS::DBSubnetGroup'
-      Properties:
-        DBSubnetGroupDescription: SubnetGroup
-        SubnetIds: 
-          - !If [CreateVpc, !Ref PublicSubnetA, !Ref PublicSubnetAId]
-          - !If [CreateVpc, !Ref PublicSubnetB, !Ref PublicSubnetBId]
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: SubnetGroup
+      SubnetIds: 
+        - !If [CreateVpc, !Ref PrivateSubnetA, !Ref PrivateSubnetAId]
+        - !If [CreateVpc, !Ref PrivateSubnetB, !Ref PrivateSubnetBId]
 
   Cloud9:
     Type: 'AWS::Cloud9::EnvironmentEC2'
@@ -428,13 +417,11 @@ Resources:
       AutomaticStopTimeMinutes: 120
       ImageId: amazonlinux-2-x86_64
       InstanceType: c5.xlarge
-      SubnetId: !If [CreateVpc, !Ref PublicSubnetA, !Ref PublicSubnetAId]
+      SubnetId: !If [CreateVpc, !Ref PublicSubnet, !Ref PublicSubnetId]
       Tags: 
         - 
           Key: SSMBootstrap
-          Value: !Sub 
-            - ${AWS::StackName}-${RANDOM}
-            - RANDOM: !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId' ]]]]
+          Value: !Sub ${AWS::StackName}
 
   Password:
     Type: 'AWS::SecretsManager::Secret'
@@ -481,8 +468,8 @@ Resources:
               - echo "export CUSTOMAD=${CUSTOMAD}" >> cluster_env
               - CUSTOMAD: !If [CreateAD, 'false', 'true']
             - !Sub
-              - echo "export PUBLIC_SUBNET_ID=${FinalPublicSubnetAId}" >> cluster_env
-              - FinalPublicSubnetAId: !If [CreateVpc, !Ref PublicSubnetA, !Ref PublicSubnetAId]
+              - echo "export PUBLIC_SUBNET_ID=${FinalPublicSubnetId}" >> cluster_env
+              - FinalPublicSubnetId: !If [CreateVpc, !Ref PublicSubnet, !Ref PublicSubnetId]
             - !Sub
               - echo "export PRIVATE_SUBNET_ID=${FinalPrivateSubnetAId}" >> cluster_env
               - FinalPrivateSubnetAId: !If [CreatePrivateSubnet, !Ref PrivateSubnetA, !Ref PrivateSubnetAId]            
@@ -660,7 +647,7 @@ Resources:
             Resource: '*'
       RouteTableIds:
         - !Ref PublicRouteTable
-        - !If [CreatePrivateSubnet, !Ref PrivateRouteTableA, !Ref 'AWS::NoValue']
+        - !If [CreatePrivateSubnet, !Ref PrivateRouteTable, !Ref 'AWS::NoValue']
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
       VpcEndpointType: Gateway
       VpcId: !Ref VPC
@@ -675,8 +662,8 @@ Resources:
       ShortName: corp
       VpcSettings: 
         SubnetIds: 
-          - !If [CreateVpc, !Ref PublicSubnetA, !Ref PublicSubnetAId]
-          - !If [CreateVpc, !Ref PublicSubnetB, !Ref PublicSubnetBId]
+          - !If [CreateVpc, !Ref PrivateSubnetA, !Ref PrivateSubnetAId]
+          - !If [CreateVpc, !Ref PrivateSubnetB, !Ref PrivateSubnetBId]
         VpcId: !If [CreateVpc, !Ref VPC, !Ref VpcId]
   
   LogGroupGetAZLambdaFunction:

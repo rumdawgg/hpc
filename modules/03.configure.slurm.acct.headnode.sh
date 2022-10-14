@@ -20,7 +20,7 @@ set -x
 set -e
 
 installPreReq() {
-    yum -y -q install mysql
+    apt-get install -qy
 }
 
 
